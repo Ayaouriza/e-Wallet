@@ -187,29 +187,28 @@ function addtransactions(expediteur, destinataire, amount) {
     }, 300);
   });
 }
-
-function transfer(expediteur, numcompte, amount) {
-  checkUser(numcompte)
-    .then(destinataire => checkSolde(expediteur, amount).then(() => destinataire))
-    .then(destinataire => updateSolde(expediteur, destinataire, amount).then(() => destinataire))
-    .then(destinataire => addtransactions(expediteur, destinataire, amount))
-    .then(msg => {
-      console.log(msg);
-      alert("Transfert réussi !");
-      renderDashboard();
-      closeTransfer();
-    })
-    .catch(err => alert("Erreur : " + err));
+async function transfer(expediteur, numcompte, amount) {
+  try {
+    const destinataire = await checkUser(numcompte);
+    await checkSolde(expediteur, amount);
+    await updateSolde(expediteur, destinataire, amount);
+    const msg = await addtransactions(expediteur, destinataire, amount);
+    console.log(msg);
+    alert("Transfert réussi !");
+    renderDashboard();
+    closeTransfer();
+  } catch (err) {
+    alert("Erreur : " + err);
+  }
 }
 
-function handleTransfer(e) {
+async function handleTransfer(e) {
   e.preventDefault();
   const beneficiaryId = beneficiarySelect.value;
   const beneficiaryAccount = findbeneficiarieByid(user.id, beneficiaryId).account;
   const amount = Number(transferAmountInput.value);
-  transfer(user, beneficiaryAccount, amount);
+  await transfer(user, beneficiaryAccount, amount);
 }
-
 // ------------------- Recharge -------------------
 function closeRecharge() {
   rechargeSection.classList.remove("active");
@@ -268,25 +267,28 @@ function addRechargeTransaction(user, card, amount, status = "SUCCESS") {
     resolve("Recharge enregistrée");
   });
 }
-
-function handleRecharge(e) {
+async function handleRecharge(e) {
   e.preventDefault();
   const cardNumber = rechargeCardSelect.value;
   const amount = Number(rechargeAmountInput.value);
 
-  checkCard(cardNumber)
-    .then(card => checkAmount(amount).then(() => card))
-    .then(card => updateWalletBalance(user, amount).then(() => card))
-    .then(card => addRechargeTransaction(user, card, amount))
-    .then(() => {
-      alert("Recharge effectuée !");
-      renderDashboard();
-      closeRecharge();
-    })
-    .catch(err => {
-      if (rechargeCardSelect.value) {
-        addRechargeTransaction(user, { numcards: rechargeCardSelect.value }, Number(rechargeAmountInput.value), "FAILED");
-      }
-      alert("Erreur : " + err);
-    });
+  try {
+    const card = await checkCard(cardNumber);
+    await checkAmount(amount);
+    await updateWalletBalance(user, amount);
+    await addRechargeTransaction(user, card, amount);
+    alert("Recharge effectuée !");
+    renderDashboard();
+    closeRecharge();
+  } catch (err) {
+    if (rechargeCardSelect.value) {
+      await addRechargeTransaction(
+        user,
+        { numcards: rechargeCardSelect.value },
+        Number(rechargeAmountInput.value),
+        "FAILED"
+      );
+    }
+    alert("Erreur : " + err);
+  }
 }
